@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirShare - How Much of This Room's Air Is Shared?</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#eef3f6; color:#17252e; line-height:1.5; }
+  .wrap { max-width:780px; margin:0 auto; padding:24px 16px 60px; }
+  h1 { font-size:27px; } h1 span { color:#1b8ab0; }
+  .sub { color:#5a6e7a; margin:4px 0 18px; font-size:14px; }
+  .card { background:#fff; border:1px solid #d5e0e6; border-radius:14px; padding:16px; margin-bottom:16px; }
+  h2 { font-size:15px; margin-bottom:10px; }
+  .presets button { background:#e1eef4; color:#17475a; border:0; border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px; margin:0 6px 6px 0; }
+  .presets button:hover { background:#cfe4ee; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  label { font-size:12px; color:#5a6e7a; display:block; margin-bottom:3px; }
+  input, select { width:100%; padding:8px; border:1px solid #c3d2da; border-radius:8px; font-size:14px; background:#fbfdfe; color:#17252e; }
+  .out { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+  .m { background:#f3f8fa; border-radius:12px; padding:12px; }
+  .m .k { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:#5a6e7a; }
+  .m .v { font-size:28px; font-weight:800; margin:2px 0; }
+  .m .s { font-size:12px; color:#5a6e7a; }
+  .good{color:#1e9e5a;} .ok{color:#a78a00;} .poor{color:#d9731a;} .bad{color:#d0312d;}
+  .note { font-size:12px; color:#5a6e7a; margin-top:10px; }
+  canvas { width:100%; height:170px; display:block; }
+  a { color:#1b8ab0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Air<span>Share</span></h1>
+  <div class="sub">CO2 is a tracer for shared breath. Describe a room and see its CO2, the share of air that was already breathed by someone else, and a rough airborne-infection risk.</div>
+
+  <div class="card"><h2>Start from a room</h2><div class="presets" id="presets"></div></div>
+
+  <div class="card">
+    <h2>The room</h2>
+    <div class="grid">
+      <div><label>Floor area (m&sup2;)</label><input type="number" id="area" min="1" value="60"></div>
+      <div><label>Ceiling height (m)</label><input type="number" id="ht" min="1" step="0.1" value="3"></div>
+      <div><label>People in the room</label><input type="number" id="n" min="0" value="25"></div>
+      <div><label>Activity</label><select id="act"><option value="rest">Resting / sleeping</option><option value="seated" selected>Seated, light work</option><option value="light">Standing, light activity</option><option value="active">Exercise</option></select></div>
+      <div><label>Ventilation given as</label><select id="vm"><option value="ach">Air changes per hour</option><option value="lsp">Litres/second per person</option></select></div>
+      <div><label id="vl">Air changes per hour (fresh air)</label><input type="number" id="v" min="0.01" step="0.1" value="1.5"></div>
+      <div><label>Outdoor CO2 (ppm)</label><input type="number" id="c0" value="420"></div>
+      <div><label>Stay length (hours)</label><input type="number" id="t" min="0.1" step="0.25" value="2"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Air in the room</h2>
+    <div class="out" id="out1"></div>
+    <canvas id="cv" width="720" height="170"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>If one person is infectious (illustrative)</h2>
+    <div class="grid">
+      <div><label>Infectious people</label><input type="number" id="inf" min="0" value="1"></div>
+      <div><label>Quanta emitted per hour (illustrative)</label><select id="q"><option value="5">5 - quiet breathing</option><option value="25" selected>25 - talking</option><option value="100">100 - loud speech or singing</option></select></div>
+      <div><label>Masks</label><select id="mask"><option value="1">No masks</option><option value="0.25">Well-fitted masks on everyone (heuristic)</option></select></div>
+    </div>
+    <div class="out" id="out2" style="margin-top:12px"></div>
+  </div>
+
+  <div class="note">
+    Model: well-mixed room, constant ventilation. CO2 rise = people x CO2 per person / fresh-air flow. Shared-air fraction f = (CO2 - outdoor) / 38,000 ppm (Rudnick &amp; Milton 2003). Risk = 1 - exp(-f x infectious x quanta x hours / people). Quanta values, per-person CO2 rates and the mask factor are rough inputs, not measurements; real rooms are not perfectly mixed. CO2 bands (under 800 good, 800 to 1000 ok, 1000 to 1500 poor, over 1500 bad) are a rule of thumb. Educational estimate, not medical advice.
+    Source: <a href="https://pubmed.ncbi.nlm.nih.gov/12950586/">Rudnick &amp; Milton, Indoor Air 2003</a>
+  </div>
+</div>
+<script src="engine.js"></script>
+<script>
+(function(){
+  var E = AirShare, $ = function(i){ return document.getElementById(i); };
+  var LBL = { good:'Fresh', ok:'Acceptable', poor:'Stuffy', bad:'Very stuffy' };
+  function fmtH(h){ if (h === Infinity) return 'never'; if (h === 0) return 'already there'; var m = Math.round(h*60); return m < 60 ? m+' min' : Math.floor(m/60)+' h '+(m%60)+' min'; }
+  function card(k, v, s, cls){ return '<div class="m"><div class="k">'+k+'</div><div class="v '+(cls||'')+'">'+v+'</div><div class="s">'+s+'</div></div>'; }
+  function read(){
+    var vol = Math.max(1, (+$('area').value) * (+$('ht').value));
+    var n = Math.max(0, Math.round(+$('n').value));
+    var g = E.ACTIVITY[$('act').value], c0 = +$('c0').value;
+    var Q = $('vm').value === 'ach' ? E.flowFromACH(+$('v').value, vol) : E.flowFromPerPerson(+$('v').value, Math.max(n,1));
+    return { vol:vol, n:n, g:g, c0:c0, Q:Q, t:+$('t').value };
+  }
+  var cv = $('cv'), ctx = cv.getContext('2d');
+  function draw(r, css){
+    var W = cv.width, H = cv.height, T = Math.max(r.t*1.5, 0.5), top = Math.max(1600, css*1.05), bot = r.c0*0.95;
+    ctx.clearRect(0,0,W,H); ctx.font = '11px sans-serif'; ctx.lineWidth = 1;
+    [800,1000,1500].forEach(function(b){ if (b < top){ var y = H-20 - (b-bot)/(top-bot)*(H-30); ctx.strokeStyle = '#d5e0e6'; ctx.beginPath(); ctx.moveTo(40,y); ctx.lineTo(W-8,y); ctx.stroke(); ctx.fillStyle = '#5a6e7a'; ctx.fillText(b, 6, y+4); } });
+    ctx.strokeStyle = '#1b8ab0'; ctx.lineWidth = 2.5; ctx.beginPath();
+    for (var i = 0; i <= 120; i++){ var t = T*i/120, c = E.ppmAt(t, r.c0, r.n, r.g, r.Q, r.vol, r.c0), x = 40 + (W-48)*i/120, y = H-20 - (c-bot)/(top-bot)*(H-30); if (i) ctx.lineTo(x,y); else ctx.moveTo(x,y); }
+    ctx.stroke();
+    var xs = 40 + (W-48)*(r.t/T); ctx.strokeStyle = '#d9731a'; ctx.setLineDash([4,3]); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xs,8); ctx.lineTo(xs,H-20); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#5a6e7a'; ctx.fillText('0 h', 40, H-5); ctx.fillText(T.toFixed(1)+' h', W-40, H-5); ctx.fillText('stay ends', Math.min(xs+4, W-60), 16);
+  }
+  function update(){
+    $('vl').textContent = $('vm').value === 'ach' ? 'Air changes per hour (fresh air)' : 'Fresh air per person (L/s)';
+    var r = read(), css = E.steadyPpm(r.n, r.g, r.Q, r.c0), endc = E.ppmAt(r.t, r.c0, r.n, r.g, r.Q, r.vol, r.c0);
+    var b = E.band(endc), need = E.flowForTarget(800, r.n, r.g, r.c0), ach = need / 1000 * 3600 / r.vol;
+    $('out1').innerHTML =
+      card('CO2 at end of stay', Math.round(endc)+' ppm', LBL[b], b) +
+      card('Steady-state CO2', Math.round(css)+' ppm', 'if people stay indefinitely', E.band(css)) +
+      card('Time to 1000 ppm', fmtH(E.hoursTo(1000, r.c0, r.n, r.g, r.Q, r.vol, r.c0)), 'from empty, fresh air') +
+      card('For 800 ppm you need', r.n ? (need/r.n).toFixed(1)+' L/s each' : '-', r.n ? ach.toFixed(1)+' air changes/h, '+Math.round(need)+' L/s total' : 'no occupants');
+    draw(r, css);
+    var f = E.rebreathed(E.meanPpm(r.t, r.c0, r.n, r.g, r.Q, r.vol, r.c0), r.c0);
+    var p = E.risk(f, +$('inf').value, +$('q').value, r.t, r.n, +$('mask').value);
+    var pct = p*100, exp = p*Math.max(0, r.n - (+$('inf').value));
+    $('out2').innerHTML =
+      card('Shared air (average)', (f*100).toFixed(2)+'%', 'of each breath was breathed before') +
+      card('Risk per susceptible person', (pct < 1 ? pct.toFixed(2) : pct.toFixed(1))+'%', 'over the stay, illustrative') +
+      card('Expected new infections', exp.toFixed(2), 'among the other '+Math.max(0, r.n-(+$('inf').value))+' people');
+  }
+  var P = { 'Classroom':{area:60,ht:3,n:28,act:'seated',vm:'ach',v:1.5,t:1.5}, 'Open office':{area:200,ht:2.8,n:30,act:'seated',vm:'lsp',v:10,t:8},
+    'Closed meeting room':{area:15,ht:2.7,n:8,act:'seated',vm:'ach',v:0.6,t:1.5}, 'Gym class':{area:120,ht:4,n:25,act:'active',vm:'ach',v:3,t:1},
+    'Bedroom, door shut':{area:12,ht:2.5,n:2,act:'rest',vm:'ach',v:0.3,t:8} };
+  var pr = $('presets');
+  Object.keys(P).forEach(function(k){ var b = document.createElement('button'); b.textContent = k; b.onclick = function(){ var p = P[k]; ['area','ht','n','act','vm','v','t'].forEach(function(f){ $(f).value = p[f]; }); update(); }; pr.appendChild(b); });
+  ['area','ht','n','act','vm','v','c0','t','inf','q','mask'].forEach(function(i){ $(i).oninput = update; $(i).onchange = update; });
+  update();
+})();
+</script>
+</body>
+</html>
