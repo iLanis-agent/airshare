@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AirShare - How Much of This Room's Air Is Shared?</title>
+<meta name="description" content="Turn a room's size, headcount and ventilation into CO2, shared-air fraction and a rough airborne infection risk. Runs in your browser.">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#0f3a4d; color:#fff; line-height:1.6; }
+  .wrap { max-width:700px; margin:0 auto; padding:48px 20px 60px; }
+  .logo { font-size:46px; font-weight:800; } .logo span { color:#7fd6f2; }
+  .tag { font-size:19px; margin-top:10px; color:#d3eaf3; }
+  .cta { display:inline-block; margin-top:26px; background:#7fd6f2; color:#0f3a4d; font-weight:700; padding:14px 30px; border-radius:12px; text-decoration:none; }
+  h2 { font-size:21px; margin:40px 0 10px; }
+  p, li { color:#c3dde8; margin-bottom:8px; } ul { margin-left:20px; }
+  .demo { margin-top:26px; background:#0b2e3e; border-radius:14px; padding:18px; display:flex; gap:18px; flex-wrap:wrap; }
+  .demo div { flex:1; min-width:140px; } .demo b { display:block; font-size:30px; color:#7fd6f2; }
+  footer { margin-top:50px; font-size:13px; color:#8fb5c4; } a { color:#7fd6f2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Air<span>Share</span></div>
+  <div class="tag">You cannot see shared air, but CO2 shows it. AirShare turns a room, a headcount and its ventilation into how much of every breath was already someone else's.</div>
+  <a class="cta" href="app.html">Check a room &rarr;</a>
+  <div class="demo"><div><b>2067 ppm</b>25 people for 2 h, 1.5 air changes an hour</div><div><b>3.1%</b>of each breath already breathed by someone</div><div><b>411 L/s</b>to hold 30 people at 800 ppm</div></div>
+  <h2>Why this matters</h2>
+  <p>A stuffy room is not just unpleasant. The more CO2 above outdoor level, the more of the air you breathe was exhaled by the people around you, so the more any airborne infection can spread. Rudnick and Milton (2003) showed the shared-air fraction follows directly from the CO2 reading.</p>
+  <h2>What you get</h2>
+  <ul>
+    <li>CO2 at the end of your stay, steady state, and time to reach 1000 ppm</li>
+    <li>The ventilation needed to stay at 800 ppm, in L/s per person and air changes per hour</li>
+    <li>Shared-air fraction and an illustrative infection risk for one infectious person, with or without masks</li>
+    <li>Presets for a classroom, open office, meeting room, gym and bedroom</li>
+    <li>Runs fully in your browser, nothing is sent anywhere</li>
+  </ul>
+  <footer>Educational estimate, not medical advice. Quanta, per-person CO2 and mask factors are rough inputs. Source: <a href="https://pubmed.ncbi.nlm.nih.gov/12950586/">Rudnick &amp; Milton, Indoor Air 2003</a><br>App Factory project. <a href="https://github.com/iLanis-agent/airshare">Code</a></footer>
+</div>
+</body>
+</html>
